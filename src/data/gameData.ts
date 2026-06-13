@@ -1,4 +1,4 @@
-import type { Breed, Herb, Prescription, DiseaseType, Staff } from "@/types/game";
+import type { Breed, Herb, Prescription, DiseaseType, Staff, DreamFragment } from "@/types/game";
 
 export const DISEASE_SYMPTOMS: Record<DiseaseType, string[]> = {
   fever: ["体温偏高", "无精打采", "食欲不振", "鼻子发干", "魔力发热"],
@@ -437,4 +437,44 @@ export const NOTES_FAIL = [
   "因误诊延误了病情，主人面露愠色。",
   "只得转往大城市的高级诊所求治。",
   "灵兽对这里产生了阴影，不愿再踏入半步。",
+];
+
+export const HIDDEN_SYMPTOMS: Record<DiseaseType, string> = {
+  fever: "灵核灼烧异象",
+  cold: "寒霜侵蚀经脉",
+  poisoning: "毒蛊噬心印记",
+  fatigue: "灵根枯萎征兆",
+  fracture: "骨灵碎裂回响",
+  mana_disorder: "灵脉逆流漩涡",
+  curse: "暗咒缠绕魂魄",
+  parasite: "灵虫筑巢印记",
+  dehydration: "灵泉干涸裂缝",
+  allergy: "灵气排斥波动",
+};
+
+export const DREAM_FRAGMENTS: DreamFragment[] = [
+  { id: "df_c_fire", type: "color", content: "赤红色焰光", emoji: "🔴", relatedDiseases: ["fever", "poisoning", "curse"] },
+  { id: "df_c_blue", type: "color", content: "冰蓝色寒光", emoji: "🔵", relatedDiseases: ["cold", "dehydration", "mana_disorder"] },
+  { id: "df_c_green", type: "color", content: "幽绿色荧光", emoji: "🟢", relatedDiseases: ["poisoning", "parasite", "allergy"] },
+  { id: "df_c_gold", type: "color", content: "金色暖光", emoji: "🟡", relatedDiseases: ["fever", "fatigue", "allergy"] },
+  { id: "df_c_purple", type: "color", content: "紫色魔光", emoji: "🟣", relatedDiseases: ["curse", "mana_disorder", "fracture"] },
+  { id: "df_c_gray", type: "color", content: "灰色雾气", emoji: "⚪", relatedDiseases: ["fatigue", "cold", "dehydration"] },
+  { id: "df_s_whisper", type: "sound", content: "低语吟唱", emoji: "🗣️", relatedDiseases: ["curse", "mana_disorder", "fever"] },
+  { id: "df_s_rumble", type: "sound", content: "骨骼碎裂声", emoji: "💀", relatedDiseases: ["fracture", "parasite", "poisoning"] },
+  { id: "df_s_drip", type: "sound", content: "水滴回响", emoji: "💧", relatedDiseases: ["dehydration", "cold", "allergy"] },
+  { id: "df_s_howl", type: "sound", content: "痛苦嚎叫", emoji: "🐺", relatedDiseases: ["fracture", "poisoning", "curse"] },
+  { id: "df_s_hum", type: "sound", content: "灵脉嗡鸣", emoji: "🎵", relatedDiseases: ["mana_disorder", "fever", "fatigue"] },
+  { id: "df_s_rustle", type: "sound", content: "虫蚀沙沙声", emoji: "🐛", relatedDiseases: ["parasite", "allergy", "poisoning"] },
+  { id: "df_sc_volcano", type: "scene", content: "火山喷发之地", emoji: "🌋", relatedDiseases: ["fever", "poisoning", "fracture"] },
+  { id: "df_sc_glacier", type: "scene", content: "冰封荒原", emoji: "🏔️", relatedDiseases: ["cold", "dehydration", "fatigue"] },
+  { id: "df_sc_swamp", type: "scene", content: "瘴气沼泽", emoji: "🌿", relatedDiseases: ["poisoning", "parasite", "allergy"] },
+  { id: "df_sc_ruins", type: "scene", content: "远古遗迹", emoji: "🏛️", relatedDiseases: ["curse", "mana_disorder", "fracture"] },
+  { id: "df_sc_desert", type: "scene", content: "干裂沙漠", emoji: "🏜️", relatedDiseases: ["dehydration", "fever", "fatigue"] },
+  { id: "df_sc_forest", type: "scene", content: "幽暗密林", emoji: "🌲", relatedDiseases: ["parasite", "cold", "allergy"] },
+  { id: "df_e_fear", type: "emotion", content: "恐惧颤抖", emoji: "😨", relatedDiseases: ["curse", "fracture", "poisoning"] },
+  { id: "df_e_angry", type: "emotion", content: "暴怒不安", emoji: "😡", relatedDiseases: ["fever", "mana_disorder", "allergy"] },
+  { id: "df_e_sorrow", type: "emotion", content: "悲伤流泪", emoji: "😢", relatedDiseases: ["dehydration", "cold", "fatigue"] },
+  { id: "df_e_anxiety", type: "emotion", content: "焦虑蜷缩", emoji: "😰", relatedDiseases: ["parasite", "curse", "fracture"] },
+  { id: "df_e_numb", type: "emotion", content: "麻木空洞", emoji: "😶", relatedDiseases: ["fatigue", "mana_disorder", "dehydration"] },
+  { id: "df_e_itch", type: "emotion", content: "焦躁抓挠", emoji: "😤", relatedDiseases: ["allergy", "parasite", "poisoning"] },
 ];

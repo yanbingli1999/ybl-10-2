@@ -28,6 +28,7 @@ export function TreatmentModal({ open, onClose, targetBed }: TreatmentModalProps
   const inventory = useGameStore(s => s.inventory);
   const staff = useGameStore(s => s.staff);
   const assignBedAndTreat = useGameStore(s => s.assignBedAndTreat);
+  const dreamBonus = useGameStore(s => s.dreamBonus);
 
   const [selectedHerbs, setSelectedHerbs] = useState<string[]>([]);
   const [selectedStaff, setSelectedStaff] = useState<string | null>(null);
@@ -116,6 +117,11 @@ export function TreatmentModal({ open, onClose, targetBed }: TreatmentModalProps
               </span>
               <span className="text-gray-500">💝 {beast.satisfaction}</span>
               <span className="text-gray-500">⏳ 等{beast.waitHours}h</span>
+              {dreamBonus[beast.id] && (
+                <span className="tag bg-purple-50 border border-purple-200 text-purple-700">
+                  🌙 梦诊 耗时-{Math.floor(dreamBonus[beast.id].timeReduction * 100)}% 成功率+{dreamBonus[beast.id].successBonus}%
+                </span>
+              )}
               {targetBed && (
                 <span className="tag bg-clinic-amber/20 text-clinic-deep border border-clinic-amber/40 ml-auto">
                   🛏️ {targetBed.name}

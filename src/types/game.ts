@@ -146,6 +146,31 @@ export interface BeastRelationship {
   highestStage: number;
 }
 
+export type DreamFragmentType = "color" | "sound" | "scene" | "emotion";
+
+export interface DreamFragment {
+  id: string;
+  type: DreamFragmentType;
+  content: string;
+  emoji: string;
+  relatedDiseases: DiseaseType[];
+}
+
+export interface DreamSession {
+  id: string;
+  beastId: string;
+  beastName: string;
+  breedId: string;
+  fragments: DreamFragment[];
+  placedFragments: string[];
+  interpretation: DiseaseType | null;
+  correctDisease: DiseaseType;
+  unlockedHiddenSymptom: string | null;
+  isResolved: boolean;
+  createdAt: number;
+  day: number;
+}
+
 export interface Notification {
   id: string;
   type: "info" | "success" | "warning" | "error";

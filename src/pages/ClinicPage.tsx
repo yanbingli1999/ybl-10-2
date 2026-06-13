@@ -50,6 +50,7 @@ export default function ClinicPage() {
               <li>在诊断弹窗中观察症状 → 选择合适的药材配方（最多3味）→ 可分配护理员</li>
               <li>点击「开始治疗」，治疗完成后点击床位领取诊金或处理失败</li>
               <li>药材不够时在右侧仓库采购，每晚 24:00 自动结算日薪</li>
+              <li>重度/危重灵兽在夜间会生成<span className="font-semibold text-purple-700">🌙梦境碎片</span>，前往「梦诊」拼接线索可解锁隐藏症状并提升治疗成功率</li>
             </ol>
             <div className="mt-3 p-2 rounded-lg bg-clinic-amber/10 border border-clinic-amber/30 text-[11px] text-clinic-deep">
               <span className="font-semibold">⚠️ 注意：</span>

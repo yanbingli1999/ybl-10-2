@@ -1,4 +1,4 @@
-import { Clock, AlertTriangle, User, Heart, X } from "lucide-react";
+import { Clock, AlertTriangle, User, Heart, X, Moon } from "lucide-react";
 import { useGameStore } from "@/store/gameStore";
 import { BREEDS } from "@/data/gameData";
 import { SEVERITY_NAMES, SEVERITY_COLORS, SEVERITY_BORDER, DISEASE_NAMES, ELEMENT_EMOJI } from "@/data/gameData";
@@ -8,6 +8,8 @@ export function WaitingQueue() {
   const selectedId = useGameStore(s => s.selectedBeastId);
   const selectBeast = useGameStore(s => s.selectBeast);
   const dismissBeast = useGameStore(s => s.dismissBeast);
+  const dreamBonus = useGameStore(s => s.dreamBonus);
+  const dreamSessions = useGameStore(s => s.dreamSessions);
 
   return (
     <div className="card p-4 h-full flex flex-col">
@@ -66,6 +68,16 @@ export function WaitingQueue() {
                       <span>💊</span>
                       <span className="font-medium text-clinic-crisis">{DISEASE_NAMES[beast.disease]}</span>
                     </div>
+                    {(dreamBonus[beast.id] || dreamSessions.some(d => d.beastId === beast.id)) && (
+                      <div className="flex items-center gap-1">
+                        <Moon className="w-3 h-3 text-purple-500" />
+                        <span className="text-purple-600 font-medium">
+                          {dreamBonus[beast.id]
+                            ? `梦诊+${dreamBonus[beast.id].successBonus}%`
+                            : "梦境可解读"}
+                        </span>
+                      </div>
+                    )}
                     <div className="flex items-center gap-1.5">
                       <User className="w-3 h-3" />
                       <span className="truncate">{beast.ownerName}</span>

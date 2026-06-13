@@ -13,6 +13,8 @@ import type {
   WeatherType,
   Prescription,
   TreatmentResult,
+  DreamSession,
+  DreamFragment,
 } from "@/types/game";
 import {
   BREEDS,
@@ -26,6 +28,8 @@ import {
   NOTES_SUCCESS,
   NOTES_FAIL,
   DISEASE_NAMES,
+  DREAM_FRAGMENTS,
+  HIDDEN_SYMPTOMS,
 } from "@/data/gameData";
 
 const DISEASE_TYPES: DiseaseType[] = [
@@ -88,6 +92,23 @@ function calcTreatmentHours(severity: Severity, staffBoost: boolean): number {
   return staffBoost ? Math.ceil(base * 0.7) : base;
 }
 
+function pickDreamFragments(disease: DiseaseType): DreamFragment[] {
+  const byType: Record<string, DreamFragment[]> = { color: [], sound: [], scene: [], emotion: [] };
+  for (const f of DREAM_FRAGMENTS) {
+    if (f.relatedDiseases.includes(disease)) byType[f.type].push(f);
+  }
+  const result: DreamFragment[] = [];
+  for (const type of ["color", "sound", "scene", "emotion"] as const) {
+    const pool = byType[type];
+    if (pool.length > 0) result.push(rand(pool));
+  }
+  const distractorPool = DREAM_FRAGMENTS.filter(f => !f.relatedDiseases.includes(disease));
+  const shuffled = distractorPool.sort(() => Math.random() - 0.5);
+  const extra = shuffled.slice(0, randomInt(2, 3));
+  result.push(...extra);
+  return result.sort(() => Math.random() - 0.5);
+}
+
 export function guessDiseaseFromSymptoms(symptoms: string[]): { disease: DiseaseType; matchRate: number }[] {
   const results: { disease: DiseaseType; matchRate: number }[] = [];
   for (const disease of DISEASE_TYPES) {
@@ -119,6 +140,8 @@ export interface GameState {
   selectedBeastId: string | null;
   selectedBedId: string | null;
   lastBeastSpawn: number;
+  dreamSessions: DreamSession[];
+  dreamBonus: Record<string, { timeReduction: number; successBonus: number }>;
 
   // Actions
   togglePause: () => void;
@@ -133,6 +156,8 @@ export interface GameState {
   clearNotification: (id: string) => void;
   resetGame: () => void;
   tickGame: (steps?: number) => void;
+  generateDreamSessions: () => void;
+  interpretDream: (sessionId: string, placedFragmentIds: string[], interpretation: DiseaseType) => void;
   _spawnInitialBeasts: () => void;
   _addTransaction: (type: Transaction["type"], category: string, amount: number, description: string) => void;
   _dailySettlement: () => void;
@@ -182,6 +207,8 @@ function buildInitialState() {
     selectedBeastId: null,
     selectedBedId: null,
     lastBeastSpawn: 8,
+    dreamSessions: [] as DreamSession[],
+    dreamBonus: {} as Record<string, { timeReduction: number; successBonus: number }>,
   };
 }
 
@@ -289,7 +316,11 @@ export const useGameStore = create<GameState>()(
         const staffSkillBonus = staffId ? (s.staff.find(x => x.id === staffId)?.skillLevel ?? 1) * 5 : 0;
         void staffSkillBonus;
 
-        const totalHours = calcTreatmentHours(beast.severity, hasStaff);
+        let totalHours = calcTreatmentHours(beast.severity, hasStaff);
+        const dreamB = s.dreamBonus[beastId];
+        if (dreamB) {
+          totalHours = Math.max(2, Math.ceil(totalHours * (1 - dreamB.timeReduction)));
+        }
 
         const newBeds = s.beds.map(b => b.id === bedId ? {
           ...b,
@@ -351,13 +382,18 @@ export const useGameStore = create<GameState>()(
           const severityMult = { mild: 1, moderate: 1.4, severe: 1.8, critical: 2.3 }[beast.severity] || 1;
           const satMult = beast.satisfaction / 100;
           const reputationBonus = s.reputation / 100;
-          const revenue = Math.floor(breed.baseFees * severityMult * (0.8 + 0.4 * satMult) * (1 + reputationBonus * 0.3));
+          let revenue = Math.floor(breed.baseFees * severityMult * (0.8 + 0.4 * satMult) * (1 + reputationBonus * 0.3));
           let repGain = Math.ceil(3 * severityMult * satMult);
           const trustGain = Math.ceil(10 * severityMult * satMult);
 
           const diagnosisCorrect = bed.playerDiagnosis === beast.disease;
           if (diagnosisCorrect) {
             repGain += 2;
+          }
+
+          const dB = s.dreamBonus[bed.assignedBeastId ?? ""];
+          if (dB && dB.successBonus > 0) {
+            revenue = Math.floor(revenue * (1 + dB.successBonus / 100));
           }
 
           let evolved = false;
@@ -472,7 +508,6 @@ export const useGameStore = create<GameState>()(
         const day = s.currentDay;
         const newWeather = rand(WEATHERS);
 
-        // 天气事件
         let eventMsg = "";
         let bonusMoney = 0;
         if (newWeather === "misty") { bonusMoney = -20; eventMsg = "大雾天气，客人稀少。"; }
@@ -505,6 +540,102 @@ export const useGameStore = create<GameState>()(
           );
         }
         get().addNotification("info", `=== 第${day}天结算 === 支付薪资${totalWage}金。${eventMsg} 新的一天开始啦！`);
+      },
+
+      generateDreamSessions: () => {
+        const s = get();
+        const difficultBeasts = s.waitingQueue.filter(b =>
+          b.severity === "severe" || b.severity === "critical"
+        );
+        if (difficultBeasts.length === 0) return;
+
+        const newSessions: DreamSession[] = difficultBeasts.map(beast => {
+          const fragments = pickDreamFragments(beast.disease);
+          return {
+            id: uid("dream"),
+            beastId: beast.id,
+            beastName: beast.name,
+            breedId: beast.breedId,
+            fragments,
+            placedFragments: [],
+            interpretation: null,
+            correctDisease: beast.disease,
+            unlockedHiddenSymptom: null,
+            isResolved: false,
+            createdAt: Date.now(),
+            day: s.currentDay,
+          };
+        });
+
+        set({ dreamSessions: [...s.dreamSessions, ...newSessions] });
+        if (newSessions.length > 0) {
+          const names = newSessions.map(d => d.beastName).join("、");
+          get().addNotification("info", `🌙 夜深了，${names}的梦境碎片浮现…前往「梦诊」拼接线索吧！`);
+        }
+      },
+
+      interpretDream: (sessionId, placedFragmentIds, interpretation) => {
+        const s = get();
+        const session = s.dreamSessions.find(d => d.id === sessionId);
+        if (!session || session.isResolved) return;
+
+        const isCorrect = interpretation === session.correctDisease;
+        const placedFrags = session.fragments.filter(f => placedFragmentIds.includes(f.id));
+        const correctPlacedCount = placedFrags.filter(f => f.relatedDiseases.includes(session.correctDisease)).length;
+        const totalCorrectFrags = session.fragments.filter(f => f.relatedDiseases.includes(session.correctDisease)).length;
+        const placementAccuracy = totalCorrectFrags > 0 ? correctPlacedCount / totalCorrectFrags : 0;
+
+        let timeReduction = 0;
+        let successBonus = 0;
+        let unlockedSymptom: string | null = null;
+
+        if (isCorrect) {
+          timeReduction = 0.2 + placementAccuracy * 0.15;
+          successBonus = 8 + Math.floor(placementAccuracy * 12);
+          unlockedSymptom = HIDDEN_SYMPTOMS[session.correctDisease];
+
+          const beast = s.waitingQueue.find(b => b.id === session.beastId);
+          if (beast && unlockedSymptom && !beast.symptoms.includes(unlockedSymptom)) {
+            set(st => ({
+              waitingQueue: st.waitingQueue.map(b =>
+                b.id === session.beastId
+                  ? { ...b, symptoms: [...b.symptoms, unlockedSymptom!] }
+                  : b
+              ),
+            }));
+          }
+        } else {
+          timeReduction = 0;
+          successBonus = -5;
+        }
+
+        const updatedSessions = s.dreamSessions.map(d =>
+          d.id === sessionId
+            ? {
+                ...d,
+                placedFragments: placedFragmentIds,
+                interpretation,
+                unlockedHiddenSymptom: unlockedSymptom,
+                isResolved: true,
+              }
+            : d
+        );
+
+        set(st => ({
+          dreamSessions: updatedSessions,
+          dreamBonus: {
+            ...st.dreamBonus,
+            [session.beastId]: { timeReduction, successBonus },
+          },
+        }));
+
+        if (isCorrect) {
+          const symptomMsg = unlockedSymptom ? ` 隐藏症状「${unlockedSymptom}」已解锁！` : "";
+          get().addNotification("success", `🌙 梦诊正确！治疗耗时-${Math.floor(timeReduction * 100)}%，成功率+${successBonus}%${symptomMsg}`);
+        } else {
+          const correctName = DISEASE_NAMES[session.correctDisease];
+          get().addNotification("warning", `🌙 梦诊判断有误…正确方向为「${correctName}」，成功率-5%`);
+        }
       },
 
       resetGame: () => {
@@ -558,15 +689,16 @@ export const useGameStore = create<GameState>()(
                 JSON.stringify([...p.herbIds].sort()) === JSON.stringify([...herbs].sort())
               );
               let finalRate = matchedPresc ? matchedPresc.successRate : 30;
-              // 员工加成
               if (b.assignedStaffId) {
                 const stf = state.staff.find(x => x.id === b.assignedStaffId);
                 finalRate += (stf?.skillLevel ?? 1) * 5;
               }
-              // 疾病严重度减成
               const sev = b.beastSnapshot?.severity ?? "mild";
               const sevDebuff = { mild: 0, moderate: -5, severe: -10, critical: -15 }[sev] || 0;
-              finalRate = Math.max(5, Math.min(98, finalRate + sevDebuff));
+              finalRate += sevDebuff;
+              const dB = state.dreamBonus[b.assignedBeastId ?? ""];
+              if (dB) finalRate += dB.successBonus;
+              finalRate = Math.max(5, Math.min(98, finalRate));
               result = Math.random() * 100 <= finalRate ? "success" : "fail";
             }
             return { ...b, treatmentProgress: Math.min(newProgress, b.treatmentTotal), result };
@@ -587,6 +719,41 @@ export const useGameStore = create<GameState>()(
 
           state.currentTime = dayPassed ? 8 : newTime;
 
+          if (!dayPassed && newTime === 21) {
+            const existingIds = new Set(state.dreamSessions.map(d => d.beastId));
+            const hasUnresolved = state.dreamSessions.some(d => !d.isResolved);
+            if (!hasUnresolved) {
+              const prevLen = state.dreamSessions.length;
+              const difficultBeasts = state.waitingQueue.filter(b =>
+                (b.severity === "severe" || b.severity === "critical") && !existingIds.has(b.id)
+              );
+              if (difficultBeasts.length > 0) {
+                const newSessions: DreamSession[] = difficultBeasts.map(beast => {
+                  const fragments = pickDreamFragments(beast.disease);
+                  return {
+                    id: uid("dream"),
+                    beastId: beast.id,
+                    beastName: beast.name,
+                    breedId: beast.breedId,
+                    fragments,
+                    placedFragments: [],
+                    interpretation: null,
+                    correctDisease: beast.disease,
+                    unlockedHiddenSymptom: null,
+                    isResolved: false,
+                    createdAt: Date.now(),
+                    day: state.currentDay,
+                  };
+                });
+                state.dreamSessions = [...state.dreamSessions, ...newSessions];
+                if (state.dreamSessions.length > prevLen) {
+                  const names = newSessions.map(d => d.beastName).join("、");
+                  get().addNotification("info", `🌙 夜深了，${names}的梦境碎片浮现…前往「梦诊」拼接线索吧！`);
+                }
+              }
+            }
+          }
+
           set(state);
           if (dayPassed) get()._dailySettlement();
         }
@@ -594,7 +761,17 @@ export const useGameStore = create<GameState>()(
     }),
     {
       name: "beast-clinic-save",
-      version: 1,
+      version: 2,
+      migrate: (persisted: any, version: number) => {
+        if (version < 2) {
+          return {
+            ...persisted,
+            dreamSessions: persisted.dreamSessions || [],
+            dreamBonus: persisted.dreamBonus || {},
+          };
+        }
+        return persisted;
+      },
       merge: (persisted, current) => ({ ...current, ...(persisted as object) }),
       onRehydrateStorage: () => (state) => {
         if (state && state.waitingQueue.length === 0 && state.medicalRecords.length === 0) {

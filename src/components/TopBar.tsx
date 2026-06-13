@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom";
 import {
   Coins, Star, Calendar, Clock, CloudSun, Play, Pause, Gauge,
-  Hospital, BookOpen, Users, Receipt, RotateCcw,
+  Hospital, BookOpen, Users, Receipt, RotateCcw, Moon,
 } from "lucide-react";
 import { useGameStore } from "@/store/gameStore";
 import { WEATHER_NAMES } from "@/data/gameData";
@@ -103,6 +103,7 @@ export function TopBar() {
         <nav className="mt-3 flex flex-wrap gap-1.5 text-sm">
           {[
             { to: "/", label: "诊所", icon: Hospital, end: true },
+            { to: "/dream", label: "梦诊", icon: Moon },
             { to: "/archive", label: "灵兽档案", icon: BookOpen },
             { to: "/staff", label: "员工管理", icon: Users },
             { to: "/finance", label: "财务流水", icon: Receipt },

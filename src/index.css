@@ -57,3 +57,32 @@ body {
     @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium;
   }
 }
+
+@keyframes dream-float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes dream-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes dream-pulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+.animate-dream-float {
+  animation: dream-float 3s ease-in-out infinite;
+}
+
+.animate-dream-shimmer {
+  background: linear-gradient(90deg, transparent 0%, rgba(139, 92, 246, 0.15) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: dream-shimmer 2s ease-in-out infinite;
+}
+
+.animate-dream-pulse {
+  animation: dream-pulse 2s ease-in-out infinite;
+}

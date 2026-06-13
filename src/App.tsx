@@ -3,6 +3,7 @@ import ClinicPage from "@/pages/ClinicPage";
 import ArchivePage from "@/pages/ArchivePage";
 import StaffPage from "@/pages/StaffPage";
 import FinancePage from "@/pages/FinancePage";
+import DreamDiagnosisPage from "@/pages/DreamDiagnosisPage";
 import { TopBar } from "@/components/TopBar";
 import { NotificationToast } from "@/components/NotificationToast";
 
@@ -17,6 +18,7 @@ export default function App() {
             <Route path="/archive" element={<ArchivePage />} />
             <Route path="/staff" element={<StaffPage />} />
             <Route path="/finance" element={<FinancePage />} />
+            <Route path="/dream" element={<DreamDiagnosisPage />} />
             <Route path="*" element={<ClinicPage />} />
           </Routes>
         </main>
