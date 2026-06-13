@@ -34,6 +34,10 @@ export function WaitingQueue() {
           const isSelected = selectedId === beast.id;
           const critical = beast.severity === "critical";
           const waitRatio = Math.min(1, beast.waitHours / 14);
+          const isDifficult = beast.severity === "severe" || beast.severity === "critical";
+          const dreamCorrect = dreamBonus[beast.id]?.successBonus > 0;
+          const diseaseRevealed = !isDifficult || dreamCorrect;
+          const hasDreamSession = dreamSessions.some(d => d.beastId === beast.id);
           return (
             <div
               key={beast.id}
@@ -66,9 +70,13 @@ export function WaitingQueue() {
                     </div>
                     <div className="flex items-center gap-1.5">
                       <span>💊</span>
-                      <span className="font-medium text-clinic-crisis">{DISEASE_NAMES[beast.disease]}</span>
+                      {diseaseRevealed ? (
+                        <span className="font-medium text-clinic-crisis">{DISEASE_NAMES[beast.disease]}</span>
+                      ) : (
+                        <span className="font-medium text-purple-600">??? {isDifficult ? "（疑难病例）" : ""}</span>
+                      )}
                     </div>
-                    {(dreamBonus[beast.id] || dreamSessions.some(d => d.beastId === beast.id)) && (
+                    {(dreamBonus[beast.id] || hasDreamSession) && (
                       <div className="flex items-center gap-1">
                         <Moon className="w-3 h-3 text-purple-500" />
                         <span className="text-purple-600 font-medium">
@@ -76,6 +84,12 @@ export function WaitingQueue() {
                             ? `梦诊+${dreamBonus[beast.id].successBonus}%`
                             : "梦境可解读"}
                         </span>
+                      </div>
+                    )}
+                    {isDifficult && !hasDreamSession && (
+                      <div className="flex items-center gap-1">
+                        <Moon className="w-3 h-3 text-purple-400" />
+                        <span className="text-purple-400 text-[11px]">夜间将生成梦境碎片</span>
                       </div>
                     )}
                     <div className="flex items-center gap-1.5">

@@ -577,8 +577,10 @@ export const useGameStore = create<GameState>()(
       interpretDream: (sessionId, placedFragmentIds, interpretation) => {
         const s = get();
         const session = s.dreamSessions.find(d => d.id === sessionId);
-        if (!session || session.isResolved) return;
+        if (!session) return;
 
+        const wasPreviouslyResolved = session.isResolved;
+        const previousCorrect = session.interpretation === session.correctDisease;
         const isCorrect = interpretation === session.correctDisease;
         const placedFrags = session.fragments.filter(f => placedFragmentIds.includes(f.id));
         const correctPlacedCount = placedFrags.filter(f => f.relatedDiseases.includes(session.correctDisease)).length;
@@ -615,7 +617,7 @@ export const useGameStore = create<GameState>()(
                 ...d,
                 placedFragments: placedFragmentIds,
                 interpretation,
-                unlockedHiddenSymptom: unlockedSymptom,
+                unlockedHiddenSymptom: isCorrect ? unlockedSymptom : previousCorrect ? d.unlockedHiddenSymptom : null,
                 isResolved: true,
               }
             : d
@@ -630,11 +632,13 @@ export const useGameStore = create<GameState>()(
         }));
 
         if (isCorrect) {
-          const symptomMsg = unlockedSymptom ? ` 隐藏症状「${unlockedSymptom}」已解锁！` : "";
-          get().addNotification("success", `🌙 梦诊正确！治疗耗时-${Math.floor(timeReduction * 100)}%，成功率+${successBonus}%${symptomMsg}`);
+          const symptomMsg = unlockedSymptom && !previousCorrect ? ` 隐藏症状「${unlockedSymptom}」已解锁！` : "";
+          const rejudgeMsg = wasPreviouslyResolved ? "（重新解读）" : "";
+          get().addNotification("success", `🌙 梦诊正确${rejudgeMsg}！治疗耗时-${Math.floor(timeReduction * 100)}%，成功率+${successBonus}%${symptomMsg}`);
         } else {
+          const rejudgeMsg = wasPreviouslyResolved ? "（重新解读）" : "";
           const correctName = DISEASE_NAMES[session.correctDisease];
-          get().addNotification("warning", `🌙 梦诊判断有误…正确方向为「${correctName}」，成功率-5%`);
+          get().addNotification("warning", `🌙 梦诊判断有误${rejudgeMsg}…正确方向为「${correctName}」，成功率-5%`);
         }
       },
 

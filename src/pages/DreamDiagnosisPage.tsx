@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { Moon, Puzzle, CheckCircle2, XCircle, Sparkles, Eye, RotateCcw } from "lucide-react";
 import { useGameStore } from "@/store/gameStore";
+import { useGameLoop } from "@/hooks/useGameLoop";
 import { BREEDS, DISEASE_NAMES, ELEMENT_EMOJI, DISEASE_SYMPTOMS } from "@/data/gameData";
 import type { DiseaseType, DreamSession, DreamFragment } from "@/types/game";
 
@@ -15,6 +16,9 @@ function DreamSessionCard({ session }: { session: DreamSession }) {
   const [selectedFrags, setSelectedFrags] = useState<string[]>(session.placedFragments);
   const [interpretation, setInterpretation] = useState<DiseaseType | null>(session.interpretation);
   const [submitted, setSubmitted] = useState(session.isResolved);
+  const [localResult, setLocalResult] = useState<{ correct: boolean | null }>({
+    correct: session.isResolved ? session.interpretation === session.correctDisease : null,
+  });
   const interpretDream = useGameStore(s => s.interpretDream);
 
   const breed = BREEDS.find(b => b.id === session.breedId);
@@ -34,6 +38,8 @@ function DreamSessionCard({ session }: { session: DreamSession }) {
   const handleSubmit = () => {
     if (!interpretation || selectedFrags.length === 0) return;
     interpretDream(session.id, selectedFrags, interpretation);
+    const isCorrect = interpretation === session.correctDisease;
+    setLocalResult({ correct: isCorrect });
     setSubmitted(true);
   };
 
@@ -41,6 +47,7 @@ function DreamSessionCard({ session }: { session: DreamSession }) {
     setSelectedFrags([]);
     setInterpretation(null);
     setSubmitted(false);
+    setLocalResult({ correct: null });
   };
 
   const selectedCount = selectedFrags.length;
@@ -72,7 +79,7 @@ function DreamSessionCard({ session }: { session: DreamSession }) {
   }, [selectedFrags, session.fragments]);
 
   return (
-    <div className={`card p-5 transition-all duration-300 ${submitted ? (session.interpretation === session.correctDisease ? "border-clinic-jade/50 shadow-glow" : "border-clinic-crisis/50") : "border-purple-200/60"}`}>
+    <div className={`card p-5 transition-all duration-300 ${submitted && localResult.correct !== null ? (localResult.correct ? "border-clinic-jade/50 shadow-glow" : "border-clinic-crisis/50") : "border-purple-200/60"}`}>
       <div className="flex items-start gap-3 mb-4">
         <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-100 to-purple-100 shadow-inner border border-purple-200/50 flex items-center justify-center text-3xl flex-shrink-0">
           {breed?.emoji || "🐾"}
@@ -85,8 +92,8 @@ function DreamSessionCard({ session }: { session: DreamSession }) {
           </div>
           <div className="mt-1 flex items-center gap-2 text-xs">
             <span className="text-purple-600">第{session.day}天梦境</span>
-            {submitted ? (
-              session.interpretation === session.correctDisease ? (
+            {submitted && localResult.correct !== null ? (
+              localResult.correct ? (
                 <span className="tag bg-emerald-50 border border-emerald-300 text-emerald-700">
                   <CheckCircle2 className="w-3 h-3" /> 梦诊正确
                 </span>
@@ -200,14 +207,14 @@ function DreamSessionCard({ session }: { session: DreamSession }) {
         </div>
       )}
 
-      {submitted ? (
+      {submitted && localResult.correct !== null ? (
         <div className="space-y-2">
           <div className={`p-3 rounded-xl text-sm ${
-            session.interpretation === session.correctDisease
+            localResult.correct
               ? "bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 text-emerald-800"
               : "bg-gradient-to-r from-red-50 to-rose-50 border border-red-200 text-red-800"
           }`}>
-            {session.interpretation === session.correctDisease ? (
+            {localResult.correct ? (
               <div>
                 <div className="font-semibold flex items-center gap-1 mb-1">
                   <CheckCircle2 className="w-4 h-4" /> 梦诊正确！
@@ -227,7 +234,7 @@ function DreamSessionCard({ session }: { session: DreamSession }) {
                   <XCircle className="w-4 h-4" /> 判断有误
                 </div>
                 <div className="text-xs">
-                  你的判断：{DISEASE_NAMES[session.interpretation!]} → 正确答案：
+                  你的判断：{DISEASE_NAMES[interpretation!]} → 正确答案：
                   <span className="font-semibold">{DISEASE_NAMES[session.correctDisease]}</span>
                 </div>
               </div>
@@ -255,10 +262,17 @@ function DreamSessionCard({ session }: { session: DreamSession }) {
 }
 
 export default function DreamDiagnosisPage() {
+  useGameLoop();
   const dreamSessions = useGameStore(s => s.dreamSessions);
+  const currentTime = useGameStore(s => s.currentTime);
+  const currentDay = useGameStore(s => s.currentDay);
+  const isNight = currentTime >= 21 || currentTime < 8;
 
   const unresolvedSessions = dreamSessions.filter(s => !s.isResolved);
   const resolvedSessions = dreamSessions.filter(s => s.isResolved);
+
+  const hour = Math.floor(currentTime).toString().padStart(2, "0");
+  const minute = Math.floor((currentTime % 1) * 60).toString().padStart(2, "0");
 
   return (
     <div className="container px-4 py-4 animate-fade">
@@ -270,7 +284,10 @@ export default function DreamDiagnosisPage() {
           <h2 className="font-display text-xl text-clinic-deep">灵兽梦诊</h2>
           <p className="text-xs text-gray-500">夜晚降临，疑难病例的梦境碎片浮现…拼接线索，解锁隐藏症状</p>
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-2 flex-wrap">
+          <span className={`tag ${isNight ? "bg-indigo-100 border-indigo-300 text-indigo-700" : "bg-amber-50 border-amber-200 text-amber-700"}`}>
+            {isNight ? "🌙 夜间" : "☀️ 白天"} · 第{currentDay}天 {hour}:{minute}
+          </span>
           <span className="tag bg-purple-50 border border-purple-200 text-purple-700">
             待解读 {unresolvedSessions.length}
           </span>
